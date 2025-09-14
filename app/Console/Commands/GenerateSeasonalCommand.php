@@ -34,7 +34,7 @@ class GenerateSeasonalCommand extends Command
         } while ($seasonResponse->getPagination()->getHasNextPage());
 
         $seasonalAnime = Arr::flatten($pages, 1);
-
+        /** @var Anime[] $seasonalAnime */
         $seasonalAnime = Arr::sortDesc($seasonalAnime, fn (Anime $anime) => $anime->getMembers());
 
         $spreadsheet = new Spreadsheet;
@@ -71,6 +71,9 @@ class GenerateSeasonalCommand extends Command
         foreach ($seasonalAnime as $anime) {
             $column = 'A';
             foreach ($configuration as $callback) {
+                if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
+                    continue;
+                }
                 try {
                     $extractor = new AnimeExtractor($anime, $jikan->getAnimeFullById($anime->getMalId())->getData());
                 } catch (\Throwable $e) {
