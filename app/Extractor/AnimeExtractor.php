@@ -45,17 +45,24 @@ class AnimeExtractor
         return implode(', ', Arr::map($this->anime->getGenres(), fn (Genre $genre) => $genre->getName()));
     }
 
-    public function extractTrailer(): string
+    public function extractPopularity(): ?int
+    {
+        return $this->anime->getMembers();
+    }
+
+    public function extractTrailer(): ?string
     {
         return $this->anime->getTrailer()->getUrl();
     }
 
-    public function extractSynopsis(): string
+    public function extractSynopsis(): ?string
     {
-        return trim(preg_replace(
+        $synopsis = $this->animeFull->getSynopsis();
+
+        return $synopsis ? trim(preg_replace(
             "/\n{2,}/",
             "\n",
-            preg_replace('/^\[Written by.+]$/m', '', $this->animeFull->getSynopsis())
-        ));
+            preg_replace('/^\[Written by.+]$/m', '', $synopsis)
+        )) : null;
     }
 }

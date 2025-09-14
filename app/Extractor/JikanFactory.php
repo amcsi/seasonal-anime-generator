@@ -25,8 +25,10 @@ class JikanFactory
         $plugins[] = new AddPathPlugin($uri);
 
         $stack = HandlerStack::create();
+        $driver = Storage::drive('jikan');
+        $adapter = $driver->getAdapter();
         $stack->push(new CacheMiddleware(new GreedyCacheStrategy(
-            new FlysystemStorage(Storage::drive('local')->getAdapter()),
+            new FlysystemStorage($adapter),
             60 * 60 * 24 * 7
         )), 'cache');
 
