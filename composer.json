@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "jikan/jikan-php": "^5.0",
+        "kevinrob/guzzle-cache-middleware": "^6.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "phpoffice/phpspreadsheet": "^5.1"
