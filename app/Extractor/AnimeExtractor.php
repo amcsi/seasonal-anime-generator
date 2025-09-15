@@ -8,7 +8,7 @@ use Illuminate\Support\Arr;
 use JetBrains\PhpStorm\Immutable;
 use Jikan\JikanPHP\Model\Anime;
 use Jikan\JikanPHP\Model\AnimeFull;
-use Jikan\JikanPHP\Model\Genre;
+use Jikan\JikanPHP\Model\MalUrl;
 
 #[Immutable]
 class AnimeExtractor
@@ -47,7 +47,7 @@ class AnimeExtractor
 
     public function extractGenres(): string
     {
-        return implode(', ', Arr::map($this->anime->getGenres(), fn (Genre $genre) => $genre->getName()));
+        return implode(', ', Arr::map($this->anime->getGenres(), fn (MalUrl $genre) => $genre->getName()));
     }
 
     public function extractPopularity(): ?int

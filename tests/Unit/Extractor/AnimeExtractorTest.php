@@ -10,7 +10,7 @@ use Jikan\JikanPHP\Model\AnimeFull;
 use Jikan\JikanPHP\Model\AnimeImages;
 use Jikan\JikanPHP\Model\AnimeImagesJpg;
 use Jikan\JikanPHP\Model\Daterange;
-use Jikan\JikanPHP\Model\Genre;
+use Jikan\JikanPHP\Model\MalUrl;
 use Jikan\JikanPHP\Model\Title;
 use Jikan\JikanPHP\Model\TrailerBase;
 use Tests\TestCase;
@@ -72,7 +72,7 @@ class AnimeExtractorTest extends TestCase
         $genresArray = ['Horror', 'Mystery', 'Supernatural'];
         $genres = [];
         foreach ($genresArray as $item) {
-            $genre = new Genre;
+            $genre = new MalUrl;
             $genre->setName($item);
             $genres[] = $genre;
         }

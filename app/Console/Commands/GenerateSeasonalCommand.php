@@ -67,8 +67,9 @@ class GenerateSeasonalCommand extends Command
             'Start date' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractStartDate());
             }, 80],
-            'Genres' => [function ($cell, AnimeExtractor $extractor) {
-                //                $worksheet->setCellValue($cell, $extractor->extractGenres());
+            'Genres' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+                $worksheet->setCellValue($cell, $extractor->extractGenres());
+                $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 100],
             'Popularity' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractPopularity());
