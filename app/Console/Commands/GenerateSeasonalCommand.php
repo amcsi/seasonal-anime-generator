@@ -99,7 +99,16 @@ class GenerateSeasonalCommand extends Command
 
                 $worksheet->getRowDimension($row)->setRowHeight(164, 'px');
                 try {
-                    $extractor = new AnimeExtractor($anime, $jikan->getAnimeFullById($anime->getMalId())->getData());
+                    $animeFull = $jikan->getAnimeFullById($anime->getMalId())->getData();
+                    $relations = $animeFull->getRelations();
+                    if ($relations) {
+                        foreach ($relations as $relation) {
+                            if (in_array($relation->getRelation(), ['Prequel', 'Sequel'], true)) {
+                                continue 3;
+                            }
+                        }
+                    }
+                    $extractor = new AnimeExtractor($anime, $animeFull);
                 } catch (\Throwable $e) {
                     \Log::warning($e->getMessage());
                     $this->warn($e->getMessage());
