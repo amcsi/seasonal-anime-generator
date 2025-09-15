@@ -3,8 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Extractor\AnimeExtractor;
+use App\Http\Cache\HttpCacher;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Storage;
 use Jikan\JikanPHP\Client;
 use Jikan\JikanPHP\Model\Anime;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
@@ -49,6 +52,8 @@ class GenerateSeasonalCommand extends Command
 
         $linkColor = new Color()->bindParent($spreadsheet)->setHyperlinkTheme();
 
+        $httpCacher = app(HttpCacher::class);
+
         $imageWidth = 120;
         $configuration = [
             'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($linkColor, $worksheet) {
@@ -58,13 +63,21 @@ class GenerateSeasonalCommand extends Command
                 $worksheet->getCell($cell)->getStyle()->getFont()->setColor($linkColor);
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 292],
-            'Image' => [function ($cell, AnimeExtractor $extractor) use ($worksheet, $imageWidth) {
+            'Image' => [function ($cell, AnimeExtractor $extractor) use ($worksheet, $imageWidth, $httpCacher) {
                 $image = $extractor->extractImage();
                 if (! $image) {
                     return;
                 }
                 $drawing = new Drawing;
-                $drawing->setPath($image);
+                $malId = $extractor->anime->getMalId();
+
+                $imagePath = $httpCacher->getLocalPath(
+                    $image,
+                    "images/$malId.jpg",
+                    Storage::drive('jikan'),
+                    CarbonImmutable::now()->subWeek()
+                );
+                $drawing->setPath($imagePath);
                 $drawing->setWidth($imageWidth + 10);
                 $drawing->setCoordinates($cell);
                 $drawing->setWorksheet($worksheet);
