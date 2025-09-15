@@ -47,6 +47,7 @@ class GenerateSeasonalCommand extends Command
         $spreadsheet->getDefaultStyle()->getFont()->setName('Arial');
         $spreadsheet->getDefaultStyle()->getFont()->setSize(10);
         $worksheet = $spreadsheet->getActiveSheet();
+        $worksheet->setTitle('Anime');
 
         $noop = function () {};
 
