@@ -45,37 +45,49 @@ class GenerateSeasonalCommand extends Command
         $noop = function () {};
 
         $configuration = [
-            'Name (Japanese, English)' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+            'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractTitles());
-            },
-            'Image' => $noop,
-            'Start date' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+            }, 292],
+            'Image' => [$noop, 120],
+            'Start date' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractStartDate());
-            },
-            'Genres' => function ($cell, AnimeExtractor $extractor) {
+            }, 80],
+            'Genres' => [function ($cell, AnimeExtractor $extractor) {
                 //                $worksheet->setCellValue($cell, $extractor->extractGenres());
-            },
-            'Popularity' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+            }, 100],
+            'Popularity' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractPopularity());
-            },
+            }, 68],
             'Trailer/PV' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractTrailer());
             },
-            'TL;DR' => $noop,
-            'Synopsis' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+            'TL;DR' => [$noop, 144],
+            'Synopsis' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractSynopsis());
-            },
+            }, 711],
         ];
 
         $worksheet->fromArray(array_keys($configuration));
+        $column = 'A';
+        foreach ($configuration as $config) {
+            $config = Arr::wrap($config);
+            $width = $config[1] ?? null;
+            if ($width) {
+                $worksheet->getColumnDimension($column)->setWidth($width, 'px');
+            }
+            $column++;
+        }
 
         $row = 2;
         foreach ($seasonalAnime as $anime) {
             $column = 'A';
             foreach ($configuration as $callback) {
+                $callback = Arr::wrap($callback)[0];
                 if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
                     continue;
                 }
+
+                $worksheet->getRowDimension($row)->setRowHeight(164, 'px');
                 try {
                     $extractor = new AnimeExtractor($anime, $jikan->getAnimeFullById($anime->getMalId())->getData());
                 } catch (\Throwable $e) {
