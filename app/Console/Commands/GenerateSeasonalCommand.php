@@ -46,7 +46,10 @@ class GenerateSeasonalCommand extends Command
 
         $configuration = [
             'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+                $id = $extractor->anime->getMalId();
                 $worksheet->setCellValue($cell, $extractor->extractTitles());
+                $worksheet->getCell($cell)->getHyperlink()->setUrl("https://myanimelist.net/anime/$id");
+                $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 292],
             'Image' => [$noop, 120],
             'Start date' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
@@ -59,11 +62,18 @@ class GenerateSeasonalCommand extends Command
                 $worksheet->setCellValue($cell, $extractor->extractPopularity());
             }, 68],
             'Trailer/PV' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
-                $worksheet->setCellValue($cell, $extractor->extractTrailer());
+                $url = $extractor->extractTrailer();
+                if (! $url) {
+                    return;
+                }
+                $worksheet->setCellValue($cell, 'Link');
+                $worksheet->getCell($cell)->getHyperlink()->setUrl($url);
+                $worksheet->getCell($cell)->getStyle()->getAlignment()->setHorizontal('center');
             },
             'TL;DR' => [$noop, 144],
             'Synopsis' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractSynopsis());
+                $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 711],
         ];
 

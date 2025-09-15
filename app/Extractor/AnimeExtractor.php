@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Extractor;
 
 use Illuminate\Support\Arr;
+use JetBrains\PhpStorm\Immutable;
 use Jikan\JikanPHP\Model\Anime;
 use Jikan\JikanPHP\Model\AnimeFull;
 use Jikan\JikanPHP\Model\Genre;
 
+#[Immutable]
 class AnimeExtractor
 {
-    public function __construct(private Anime $anime, private AnimeFull $animeFull) {}
+    public function __construct(public Anime $anime, public AnimeFull $animeFull) {}
 
     public function extractTitles(): string
     {
