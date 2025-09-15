@@ -75,7 +75,7 @@ class GenerateSeasonalCommand extends Command
                 $worksheet->getStyle($cell)->getNumberFormat()->setFormatCode('mmm d');
             }, 80],
             'Genres' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
-                $worksheet->setCellValue($cell, $extractor->extractGenres());
+                $worksheet->setCellValue($cell, implode(",\n", $extractor->extractGenres()));
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 100],
             'Popularity' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
@@ -130,6 +130,10 @@ class GenerateSeasonalCommand extends Command
                         }
                     }
                     $extractor = new AnimeExtractor($anime, $animeFull);
+                    $genres = $extractor->extractGenres();
+                    if (in_array('Hentai', $genres, true)) {
+                        continue 2;
+                    }
                 } catch (\Throwable $e) {
                     \Log::warning($e->getMessage());
                     $this->warn($e->getMessage());

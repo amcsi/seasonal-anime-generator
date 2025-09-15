@@ -45,9 +45,9 @@ class AnimeExtractor
         return substr($aired->getFrom(), 0, 10);
     }
 
-    public function extractGenres(): string
+    public function extractGenres(): array
     {
-        return implode(', ', Arr::map($this->anime->getGenres(), fn (MalUrl $genre) => $genre->getName()));
+        return Arr::map($this->anime->getGenres(), fn (MalUrl $genre) => $genre->getName());
     }
 
     public function extractPopularity(): ?int
