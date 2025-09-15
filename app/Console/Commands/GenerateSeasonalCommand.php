@@ -7,7 +7,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Jikan\JikanPHP\Client;
 use Jikan\JikanPHP\Model\Anime;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -45,12 +47,15 @@ class GenerateSeasonalCommand extends Command
 
         $noop = function () {};
 
+        $linkColor = new Color()->bindParent($spreadsheet)->setHyperlinkTheme();
+
         $imageWidth = 120;
         $configuration = [
-            'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+            'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($linkColor, $worksheet) {
                 $id = $extractor->anime->getMalId();
                 $worksheet->setCellValue($cell, $extractor->extractTitles());
                 $worksheet->getCell($cell)->getHyperlink()->setUrl("https://myanimelist.net/anime/$id");
+                $worksheet->getCell($cell)->getStyle()->getFont()->setColor($linkColor);
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 292],
             'Image' => [function ($cell, AnimeExtractor $extractor) use ($worksheet, $imageWidth) {
@@ -65,7 +70,9 @@ class GenerateSeasonalCommand extends Command
                 $drawing->setWorksheet($worksheet);
             }, $imageWidth],
             'Start date' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
-                $worksheet->setCellValue($cell, $extractor->extractStartDate());
+                $startDateString = $extractor->extractStartDate();
+                $worksheet->setCellValue($cell, Date::convertIsoDate($startDateString));
+                $worksheet->getStyle($cell)->getNumberFormat()->setFormatCode('mmm d');
             }, 80],
             'Genres' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractGenres());
@@ -74,13 +81,14 @@ class GenerateSeasonalCommand extends Command
             'Popularity' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractPopularity());
             }, 68],
-            'Trailer/PV' => function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+            'Trailer/PV' => function ($cell, AnimeExtractor $extractor) use ($linkColor, $worksheet) {
                 $url = $extractor->extractTrailer();
                 if (! $url) {
                     return;
                 }
                 $worksheet->setCellValue($cell, 'Link');
                 $worksheet->getCell($cell)->getHyperlink()->setUrl($url);
+                $worksheet->getCell($cell)->getStyle()->getFont()->setColor($linkColor);
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setHorizontal('center');
             },
             'TL;DR' => [$noop, 144],
