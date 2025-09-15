@@ -38,6 +38,8 @@ class GenerateSeasonalCommand extends Command
         $seasonalAnime = Arr::sortDesc($seasonalAnime, fn (Anime $anime) => $anime->getMembers());
 
         $spreadsheet = new Spreadsheet;
+        $spreadsheet->getDefaultStyle()->getFont()->setName('Arial');
+        $spreadsheet->getDefaultStyle()->getFont()->setSize(10);
         $worksheet = $spreadsheet->getActiveSheet();
 
         $noop = function () {};
