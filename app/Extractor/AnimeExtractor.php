@@ -67,7 +67,7 @@ class AnimeExtractor
         return $synopsis ? trim(preg_replace(
             "/\n{2,}/",
             "\n",
-            preg_replace('/^\[Written by.+]$/m', '', $synopsis)
+            preg_replace(['/^\[Written by.+]$/m', '/^\(Source:.+\)$/m'], '', $synopsis)
         )) : null;
     }
 }

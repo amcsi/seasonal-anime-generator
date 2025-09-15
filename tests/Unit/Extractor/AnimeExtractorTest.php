@@ -99,7 +99,7 @@ class AnimeExtractorTest extends TestCase
     public function test_extract_synopsis(): void
     {
         $anime = new AnimeFull;
-        $synopsis = "hey\n\nyo\n\n[Written by MAL Rewrite]";
+        $synopsis = "hey\n\nyo\n\n[Written by MAL Rewrite]\n\n(Source: Alpha Manga)";
         $anime->setSynopsis($synopsis);
 
         $instance = new AnimeExtractor(new Anime, $anime);
