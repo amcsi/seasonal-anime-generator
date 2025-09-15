@@ -93,7 +93,7 @@ class AnimeExtractorTest extends TestCase
 
         $instance = new AnimeExtractor($anime, new AnimeFull);
 
-        self::assertSame('Horror, Mystery, Supernatural', $instance->extractTrailer());
+        self::assertSame('https://www.youtube.com/watch?v=j1hqIrLqOso', $instance->extractTrailer());
     }
 
     public function test_extract_synopsis(): void

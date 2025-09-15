@@ -33,7 +33,10 @@ class AnimeExtractor
         return trim("$original\n$english");
     }
 
-    public function extractImage(): string {}
+    public function extractImage(): ?string
+    {
+        return $this->anime->getImages()->getJpg()->getImageUrl();
+    }
 
     public function extractStartDate(): string
     {

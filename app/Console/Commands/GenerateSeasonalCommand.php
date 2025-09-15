@@ -8,6 +8,7 @@ use Illuminate\Support\Arr;
 use Jikan\JikanPHP\Client;
 use Jikan\JikanPHP\Model\Anime;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class GenerateSeasonalCommand extends Command
@@ -44,6 +45,7 @@ class GenerateSeasonalCommand extends Command
 
         $noop = function () {};
 
+        $imageWidth = 120;
         $configuration = [
             'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $id = $extractor->anime->getMalId();
@@ -51,7 +53,17 @@ class GenerateSeasonalCommand extends Command
                 $worksheet->getCell($cell)->getHyperlink()->setUrl("https://myanimelist.net/anime/$id");
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 292],
-            'Image' => [$noop, 120],
+            'Image' => [function ($cell, AnimeExtractor $extractor) use ($worksheet, $imageWidth) {
+                $image = $extractor->extractImage();
+                if (! $image) {
+                    return;
+                }
+                $drawing = new Drawing;
+                $drawing->setPath($image);
+                $drawing->setWidth($imageWidth + 10);
+                $drawing->setCoordinates($cell);
+                $drawing->setWorksheet($worksheet);
+            }, $imageWidth],
             'Start date' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractStartDate());
             }, 80],
@@ -97,7 +109,7 @@ class GenerateSeasonalCommand extends Command
                     continue 2;
                 }
 
-                $worksheet->getRowDimension($row)->setRowHeight(164, 'px');
+                $worksheet->getRowDimension($row)->setRowHeight(200, 'px');
                 try {
                     $animeFull = $jikan->getAnimeFullById($anime->getMalId())->getData();
                     $relations = $animeFull->getRelations();
