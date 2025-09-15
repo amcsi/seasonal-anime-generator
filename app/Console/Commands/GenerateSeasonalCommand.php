@@ -94,7 +94,7 @@ class GenerateSeasonalCommand extends Command
             foreach ($configuration as $callback) {
                 $callback = Arr::wrap($callback)[0];
                 if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
-                    continue;
+                    continue 2;
                 }
 
                 $worksheet->getRowDimension($row)->setRowHeight(164, 'px');
@@ -102,6 +102,7 @@ class GenerateSeasonalCommand extends Command
                     $extractor = new AnimeExtractor($anime, $jikan->getAnimeFullById($anime->getMalId())->getData());
                 } catch (\Throwable $e) {
                     \Log::warning($e->getMessage());
+                    $this->warn($e->getMessage());
 
                     continue;
                 }
