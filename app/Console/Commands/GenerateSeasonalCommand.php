@@ -200,9 +200,8 @@ class GenerateSeasonalCommand extends Command
                         continue 2;
                     }
                 } catch (\Throwable $e) {
-                    $message = "Failed to get details for anime $malId: ".$e->getMessage();
-                    \Log::warning($message);
-                    $this->warn($message);
+                    \Log::warning($e);
+                    $this->warn($e);
 
                     continue 2;
                 }
