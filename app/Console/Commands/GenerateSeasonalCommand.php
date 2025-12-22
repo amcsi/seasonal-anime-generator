@@ -6,10 +6,13 @@ use App\Extractor\AnimeExtractor;
 use App\Http\Cache\HttpCacher;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Jikan\JikanPHP\Client;
 use Jikan\JikanPHP\Model\Anime;
+use Jikan\JikanPHP\Model\AnimeFull;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Color;
@@ -60,6 +63,8 @@ class GenerateSeasonalCommand extends Command
 
         $linkColor = new Color()->bindParent($spreadsheet)->setHyperlinkTheme();
 
+        /** @var Repository $cache */
+        $cache = Cache::driver('file');
         $httpCacher = app(HttpCacher::class);
 
         $imageWidth = 120;
@@ -175,14 +180,21 @@ class GenerateSeasonalCommand extends Command
 
                 $worksheet->getRowDimension($row)->setRowHeight(200, 'px');
                 try {
-                    $extractor = new AnimeExtractor($anime, $jikan->getAnimeFullById($anime->getMalId())->getData());
+                    /** @var AnimeFull $fullAnime */
+                    $fullAnime = $cache->remember(
+                        "full-anime-$malId",
+                        now()->addHours(8),
+                        fn () => $jikan->getAnimeFullById($malId)->getData()
+                    );
+                    $extractor = new AnimeExtractor($anime, $fullAnime);
                     $genres = $extractor->extractGenres();
                     if (in_array('Hentai', $genres, true)) {
                         continue 2;
                     }
                 } catch (\Throwable $e) {
-                    \Log::warning($e->getMessage());
-                    $this->warn($e->getMessage());
+                    $message = "Failed to get details for anime $malId: ".$e->getMessage();
+                    \Log::warning($message);
+                    $this->warn($message);
 
                     continue 2;
                 }
