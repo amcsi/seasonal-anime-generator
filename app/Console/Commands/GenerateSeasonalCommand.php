@@ -184,7 +184,15 @@ class GenerateSeasonalCommand extends Command
                     $fullAnime = $cache->remember(
                         "full-anime-$malId",
                         now()->addHours(8),
-                        fn () => $jikan->getAnimeFullById($malId)->getData()
+                        function () use ($jikan, $malId) {
+                            $animeFull = $jikan->getAnimeFullById($malId);
+                            sleep(1); // Throttle.
+                            if (! $animeFull) {
+                                throw new \RuntimeException("Anime $malId not found");
+                            }
+
+                            return $animeFull->getData();
+                        }
                     );
                     $extractor = new AnimeExtractor($anime, $fullAnime);
                     $genres = $extractor->extractGenres();
