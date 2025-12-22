@@ -184,7 +184,7 @@ class GenerateSeasonalCommand extends Command
                     \Log::warning($e->getMessage());
                     $this->warn($e->getMessage());
 
-                    continue;
+                    continue 2;
                 }
                 $callback("$column$row", $extractor);
 
