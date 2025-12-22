@@ -25,8 +25,15 @@ class GenerateSeasonalCommand extends Command
     public function handle(): void
     {
         $jikan = app(Client::class);
-        $year = 2025;
-        $season = 'fall';
+        $now = now();
+        $seasonStart = $now->addQuarter()->floorQuarters();
+        $year = $seasonStart->year;
+        $season = match ($seasonStart->quarter) {
+            1 => 'winter',
+            2 => 'spring',
+            3 => 'summer',
+            4 => 'fall',
+        };
 
         $dateFormatted = now()->format('Ymd_His');
         $filename = "seasonal_{$year}_{$season}_{$dateFormatted}.xlsx";
