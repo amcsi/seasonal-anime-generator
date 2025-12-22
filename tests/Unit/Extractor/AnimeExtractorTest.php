@@ -86,6 +86,10 @@ class AnimeExtractorTest extends TestCase
     public function test_extract_trailer(): void
     {
         $anime = new Anime;
+        $englishTitle = new Title;
+        $englishTitle->setTitle('The Fragrant Flower Blooms with Dignity');
+        $englishTitle->setType('English');
+        $anime->setTitles([$englishTitle]);
         $url = 'https://www.youtube.com/watch?v=j1hqIrLqOso';
         $trailer = new TrailerBase;
         $trailer->setUrl($url);
@@ -93,7 +97,10 @@ class AnimeExtractorTest extends TestCase
 
         $instance = new AnimeExtractor($anime, new AnimeFull);
 
-        self::assertSame('https://www.youtube.com/watch?v=j1hqIrLqOso', $instance->extractTrailer());
+        self::assertSame(
+            'https://www.youtube.com/results?search_query='.urlencode($englishTitle->getTitle()),
+            $instance->extractTrailer()
+        );
     }
 
     public function test_extract_synopsis(): void

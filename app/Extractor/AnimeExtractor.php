@@ -15,22 +15,29 @@ class AnimeExtractor
 {
     public function __construct(public Anime $anime, public AnimeFull $animeFull) {}
 
-    public function extractTitles(): string
+    public function extractTitlesAsArray(): array
     {
         $titles = $this->anime->getTitles();
 
-        $original = '';
-        $english = '';
+        $titlesToReturn = [
+            0 => null, // Original
+            1 => null, // English
+        ];
 
         foreach ($titles as $title) {
             if ($title->getType() === 'Default') {
-                $original = $title->getTitle();
+                $titlesToReturn[0] = $title->getTitle();
             } elseif ($title->getType() === 'English') {
-                $english = $title->getTitle();
+                $titlesToReturn[1] = $title->getTitle();
             }
         }
 
-        return trim("$original\n$english");
+        return $titlesToReturn;
+    }
+
+    public function extractTitles(): string
+    {
+        return trim(implode("\n", $this->extractTitlesAsArray()));
     }
 
     public function extractImage(): ?string
@@ -57,7 +64,9 @@ class AnimeExtractor
 
     public function extractTrailer(): ?string
     {
-        return $this->anime->getTrailer()->getUrl();
+        $title = $this->extractTitlesAsArray();
+        $titleString = end($title);
+        return $titleString ? 'https://www.youtube.com/results?search_query='.urlencode($titleString) : '';
     }
 
     public function extractSynopsis(): ?string
