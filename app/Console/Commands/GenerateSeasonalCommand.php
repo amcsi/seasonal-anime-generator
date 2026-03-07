@@ -138,32 +138,7 @@ class GenerateSeasonalCommand extends Command
             $column++;
         }
 
-        $additionalSkip = [
-            52807, // One Punch Man
-            57025, // Tondemo Skill de Isekai Hourou Meshi
-            59027, // Spy X Family
-            60098, // Boku no Hero Academia
-            54703, // Fumetsu
-            60564, // Ranma
-            60619, // Nageki
-            54757, // Gintama: 3-Z Ginpachi Sensei
-            58515, // Kekkon Yubiwa
-            58772, // Kakuriyo
-            61200, // Shuumatsu
-            56877, // Ao no Orchestra
-            61834, // Inazuma Goutou
-            60336, // Star Wars: Visions.
-            60551, // Hyakushou Kizoku
-            60983, // Kagaku x Bouken Survival!.
-            61922, // Shibuya♡Hachi.
-            61924, // Muzik Tiger In the Forest.
-            62231, // Jochum
-            62005, //
-            62231, //
-            62268, //
-            62447, //
-            61254, //
-        ];
+        $additionalSkip = Arr::map(config('core.ignore_mal_ids'), static fn ($malId) => (int) $malId);
 
         $row = 2;
         foreach ($seasonalAnime as $anime) {
