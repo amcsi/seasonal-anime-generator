@@ -12,7 +12,6 @@ use Jikan\JikanPHP\Model\AnimeImagesJpg;
 use Jikan\JikanPHP\Model\Daterange;
 use Jikan\JikanPHP\Model\MalUrl;
 use Jikan\JikanPHP\Model\Title;
-use Jikan\JikanPHP\Model\TrailerBase;
 use Tests\TestCase;
 
 class AnimeExtractorTest extends TestCase
@@ -110,15 +109,27 @@ class AnimeExtractorTest extends TestCase
         $englishTitle->setTitle('The Fragrant Flower Blooms with Dignity');
         $englishTitle->setType('English');
         $anime->setTitles([$englishTitle]);
-        $url = 'https://www.youtube.com/watch?v=j1hqIrLqOso';
-        $trailer = new TrailerBase;
-        $trailer->setUrl($url);
-        $anime->setTrailer($trailer);
 
         $instance = new AnimeExtractor($anime, new AnimeFull);
 
         self::assertSame(
             'https://www.youtube.com/results?search_query='.urlencode($englishTitle->getTitle()),
+            $instance->extractTrailer()
+        );
+    }
+
+    public function test_extract_trailer_no_english(): void
+    {
+        $anime = new Anime;
+        $japaneseTitle = new Title;
+        $japaneseTitle->setTitle('Liar Game');
+        $japaneseTitle->setType('Default');
+        $anime->setTitles([$japaneseTitle]);
+
+        $instance = new AnimeExtractor($anime, new AnimeFull);
+
+        self::assertSame(
+            'https://www.youtube.com/results?search_query='.urlencode($japaneseTitle->getTitle()),
             $instance->extractTrailer()
         );
     }

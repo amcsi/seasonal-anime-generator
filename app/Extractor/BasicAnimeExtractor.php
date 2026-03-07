@@ -68,8 +68,7 @@ class BasicAnimeExtractor
 
     public function extractTrailer(): ?string
     {
-        $title = $this->extractTitlesAsArray();
-        $titleString = end($title);
+        $titleString = $this->extractTitlePreferringEnglish();
 
         return $titleString ? 'https://www.youtube.com/results?search_query='.urlencode($titleString) : '';
     }
