@@ -179,18 +179,54 @@ class GenerateSeasonalCommand extends Command
                         return $animeFull->getData();
                     }
                 );
-                $extractor = new AnimeExtractor($anime, $fullAnime);
             } catch (\Throwable $e) {
                 \Log::warning($e);
                 $this->warn($e);
 
                 continue;
             }
+            $relations = $fullAnime->getRelations() ?? [];
+            $today = now()->startOfDay();
+            foreach ($relations as $relationItem) {
+                $relationType = $relationItem->getRelation();
+                if (! in_array($relationType, ['Prequel', 'Sequel'], true)) {
+                    continue;
+                }
+                foreach ($relationItem->getEntry() as $entry) {
+                    $relatedMalId = $entry->getMalId();
+                    /** @var Anime|null $relatedAnime */
+                    $relatedAnime = $cache->remember(
+                        "basic-anime-$relatedMalId",
+                        now()->addHours(8),
+                        function () use ($jikan, $relatedMalId) {
+                            $response = $jikan->getAnimeById($relatedMalId);
+                            sleep(1); // Throttle.
+
+                            return $response?->getData();
+                        }
+                    );
+                    if ($relatedAnime === null) {
+                        continue;
+                    }
+                    $aired = $relatedAnime->getAired();
+                    $from = $aired?->getFrom();
+                    if ($from === null || $from === '') {
+                        continue;
+                    }
+                    $startDate = CarbonImmutable::parse(substr($from, 0, 10));
+                    if ($startDate->lt($today)) {
+                        $this->warn("Skipping due to {$relationType} (MAL ID {$relatedMalId}) that started in the past.");
+
+                        continue 3;
+                    }
+                }
+            }
             $column = 'A';
             foreach ($configuration as $callback) {
                 $callback = Arr::wrap($callback)[0];
 
                 $worksheet->getRowDimension($row)->setRowHeight(200, 'px');
+                $extractor = new AnimeExtractor($anime, $fullAnime);
                 $callback("$column$row", $extractor);
 
                 $column++;
