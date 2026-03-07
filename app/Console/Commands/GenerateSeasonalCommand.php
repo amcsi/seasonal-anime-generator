@@ -147,7 +147,7 @@ class GenerateSeasonalCommand extends Command
         foreach ($seasonalAnime as $anime) {
             $malId = $anime->getMalId();
             $basicAnimeExtractor = new BasicAnimeExtractor($anime);
-            $animeTitle = array_first($basicAnimeExtractor->extractTitlesAsArray());
+            $animeTitle = $basicAnimeExtractor->extractTitlePreferringEnglish();
             $this->line("Anime: {$animeTitle}");
             if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
                 $this->warn("Skipping type: {$anime->getType()}");

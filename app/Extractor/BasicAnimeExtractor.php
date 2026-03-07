@@ -32,6 +32,13 @@ class BasicAnimeExtractor
         return $titlesToReturn;
     }
 
+    public function extractTitlePreferringEnglish()
+    {
+        $titlesArray = $this->extractTitlesAsArray();
+
+        return $titlesArray[1] ?? $titlesArray[0];
+    }
+
     public function extractImage(): ?string
     {
         return $this->anime->getImages()->getJpg()->getImageUrl();
