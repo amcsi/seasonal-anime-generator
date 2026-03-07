@@ -37,6 +37,26 @@ class AnimeExtractorTest extends TestCase
         );
     }
 
+    public function test_extract_titles_same_in_both_languages(): void
+    {
+        $anime = new Anime;
+        $japaneseTitle = new Title;
+        $japaneseTitle->setTitle('Sanda');
+        $japaneseTitle->setType('Default');
+        $englishTitle = new Title;
+        $englishTitle->setTitle('Sanda');
+        $englishTitle->setType('English');
+
+        $anime->setTitles([$japaneseTitle, $englishTitle]);
+
+        $instance = new AnimeExtractor($anime, new AnimeFull);
+
+        self::assertSame(
+            'Sanda',
+            $instance->extractTitles()
+        );
+    }
+
     public function test_extract_start_date(): void
     {
         $anime = new Anime;

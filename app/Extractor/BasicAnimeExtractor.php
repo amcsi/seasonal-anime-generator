@@ -44,7 +44,7 @@ class BasicAnimeExtractor
 
     public function extractTitles(): string
     {
-        return trim(implode("\n", $this->extractTitlesAsArray()));
+        return trim(implode("\n", array_unique($this->extractTitlesAsArray())));
     }
 
     public function extractStartDate(): string
