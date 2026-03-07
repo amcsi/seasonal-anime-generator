@@ -164,33 +164,33 @@ class GenerateSeasonalCommand extends Command
 
                 continue;
             }
+            try {
+                /** @var AnimeFull $fullAnime */
+                $fullAnime = $cache->remember(
+                    "full-anime-$malId",
+                    now()->addHours(8),
+                    function () use ($jikan, $malId) {
+                        $animeFull = $jikan->getAnimeFullById($malId);
+                        sleep(1); // Throttle.
+                        if (! $animeFull) {
+                            throw new \RuntimeException("Anime $malId not found");
+                        }
+
+                        return $animeFull->getData();
+                    }
+                );
+                $extractor = new AnimeExtractor($anime, $fullAnime);
+            } catch (\Throwable $e) {
+                \Log::warning($e);
+                $this->warn($e);
+
+                continue;
+            }
             $column = 'A';
             foreach ($configuration as $callback) {
                 $callback = Arr::wrap($callback)[0];
 
                 $worksheet->getRowDimension($row)->setRowHeight(200, 'px');
-                try {
-                    /** @var AnimeFull $fullAnime */
-                    $fullAnime = $cache->remember(
-                        "full-anime-$malId",
-                        now()->addHours(8),
-                        function () use ($jikan, $malId) {
-                            $animeFull = $jikan->getAnimeFullById($malId);
-                            sleep(1); // Throttle.
-                            if (! $animeFull) {
-                                throw new \RuntimeException("Anime $malId not found");
-                            }
-
-                            return $animeFull->getData();
-                        }
-                    );
-                    $extractor = new AnimeExtractor($anime, $fullAnime);
-                } catch (\Throwable $e) {
-                    \Log::warning($e);
-                    $this->warn($e);
-
-                    continue 2;
-                }
                 $callback("$column$row", $extractor);
 
                 $column++;
