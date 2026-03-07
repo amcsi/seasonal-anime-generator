@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Extractor\AnimeExtractor;
+use App\Extractor\BasicAnimeExtractor;
 use App\Http\Cache\HttpCacher;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -38,6 +39,7 @@ class GenerateSeasonalCommand extends Command
             4 => 'fall',
         };
 
+        $this->info("Year: $year; Season: $season");
         $dateFormatted = now()->format('Ymd_His');
         $filename = "seasonal_{$year}_{$season}_{$dateFormatted}.xlsx";
 
@@ -142,16 +144,29 @@ class GenerateSeasonalCommand extends Command
 
         $row = 2;
         foreach ($seasonalAnime as $anime) {
+            $malId = $anime->getMalId();
+            $basicAnimeExtractor = new BasicAnimeExtractor($anime);
+            $animeTitle = array_first($basicAnimeExtractor->extractTitlesAsArray());
+            $this->line("Anime: {$animeTitle}");
+            if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
+                $this->warn("Skipping type: {$anime->getType()}");
+
+                continue;
+            }
+            if (in_array($malId, $additionalSkip, true)) {
+                $this->warn('Skipping due to skip list.');
+
+                continue;
+            }
+            $genres = $basicAnimeExtractor->extractGenres();
+            if (in_array('Hentai', $genres, true)) {
+                $this->warn('Skipping due to Hentai');
+
+                continue;
+            }
             $column = 'A';
             foreach ($configuration as $callback) {
                 $callback = Arr::wrap($callback)[0];
-                if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
-                    continue 2;
-                }
-                $malId = $anime->getMalId();
-                if (in_array($malId, $additionalSkip, true)) {
-                    continue 2;
-                }
 
                 $worksheet->getRowDimension($row)->setRowHeight(200, 'px');
                 try {
@@ -170,10 +185,6 @@ class GenerateSeasonalCommand extends Command
                         }
                     );
                     $extractor = new AnimeExtractor($anime, $fullAnime);
-                    $genres = $extractor->extractGenres();
-                    if (in_array('Hentai', $genres, true)) {
-                        continue 2;
-                    }
                 } catch (\Throwable $e) {
                     \Log::warning($e);
                     $this->warn($e);
@@ -184,6 +195,7 @@ class GenerateSeasonalCommand extends Command
 
                 $column++;
             }
+            $this->info('Success');
             $row++;
         }
 
