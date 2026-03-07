@@ -1,0 +1,14 @@
+---
+description: Use CarbonImmutable instead of Carbon for date/time in PHP
+globs: **/*.php
+alwaysApply: false
+---
+
+# Carbon: use CarbonImmutable
+
+In this project we use **CarbonImmutable** instead of **Carbon\Carbon** for all date/time handling.
+
+- **Do:** `use Carbon\CarbonImmutable;` and call `CarbonImmutable::now()`, `CarbonImmutable::parse(...)`, etc.
+- **Don't:** use `Carbon\Carbon` or `\Carbon\Carbon::...` for new or edited code.
+
+This keeps date values immutable and avoids accidental mutation.
