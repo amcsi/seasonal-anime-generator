@@ -143,8 +143,13 @@ class GenerateSeasonalCommand extends Command
         $additionalSkip = Arr::map(config('core.ignore_mal_ids'), static fn ($malId) => (int) $malId);
 
         $row = 2;
+        $addedMalIds = [];
         foreach ($seasonalAnime as $anime) {
             $malId = $anime->getMalId();
+            if (isset($addedMalIds[$malId])) {
+                $this->line("Skipping already added MAL ID {$malId}");
+                continue;
+            }
             $basicAnimeExtractor = new BasicAnimeExtractor($anime);
             $animeTitle = array_first($basicAnimeExtractor->extractTitlesAsArray());
             $this->line("Anime: {$animeTitle}");
@@ -232,6 +237,7 @@ class GenerateSeasonalCommand extends Command
                 $column++;
             }
             $this->info('Success');
+            $addedMalIds[$malId] = true;
             $row++;
         }
 
