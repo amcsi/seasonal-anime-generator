@@ -62,8 +62,6 @@ class GenerateSeasonalCommand extends Command
         $worksheet = $spreadsheet->getActiveSheet();
         $worksheet->setTitle('Anime');
 
-        $noop = function () {};
-
         $linkColor = new Color()->bindParent($spreadsheet)->setHyperlinkTheme();
 
         /** @var Repository $cache */
@@ -120,7 +118,9 @@ class GenerateSeasonalCommand extends Command
                 $worksheet->getCell($cell)->getStyle()->getFont()->setColor($linkColor);
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setHorizontal('center');
             },
-            'TL;DR' => [$noop, 144],
+            'TL;DR' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
+                $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
+            }, 144],
             'Synopsis' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $worksheet->setCellValue($cell, $extractor->extractSynopsis());
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
