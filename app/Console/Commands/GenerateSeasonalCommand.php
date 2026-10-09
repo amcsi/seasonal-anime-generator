@@ -5,15 +5,13 @@ namespace App\Console\Commands;
 use App\Extractor\AnimeExtractor;
 use App\Extractor\BasicAnimeExtractor;
 use App\Http\Cache\HttpCacher;
+use App\Mal\MalClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Jikan\JikanPHP\Client;
-use Jikan\JikanPHP\Model\Anime;
-use Jikan\JikanPHP\Model\AnimeFull;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Color;
@@ -28,7 +26,7 @@ class GenerateSeasonalCommand extends Command
 
     public function handle(): void
     {
-        $jikan = app(Client::class);
+        $mal = app(MalClient::class);
         $now = now();
         $seasonStart = $now->subMonth()->addQuarter()->floorQuarters();
         $year = $seasonStart->year;
@@ -43,18 +41,30 @@ class GenerateSeasonalCommand extends Command
         $dateFormatted = now()->format('Ymd_His');
         $filename = "seasonal_{$year}_{$season}_{$dateFormatted}.xlsx";
 
-        $pages = [];
-        $page = 0;
-        do {
-            $page++;
-            $seasonResponse = $jikan->getSeason($year, $season, ['page' => $page]);
-            $pages[] = $seasonResponse->getData();
-        } while ($seasonResponse->getPagination()->getHasNextPage());
+        /** @var Repository $cache */
+        $cache = Cache::driver('file');
 
-        $seasonalAnime = Arr::flatten($pages, 1);
-        /** @var Anime[] $seasonalAnime */
-        $seasonalAnime = collect($seasonalAnime)->unique(fn (Anime $anime) => $anime->getMalId())->values()->all();
-        $seasonalAnime = Arr::sortDesc($seasonalAnime, fn (Anime $anime) => $anime->getMembers());
+        $seasonalAnime = $cache->remember(
+            "mal-season-$year-$season",
+            now()->addHours(8),
+            fn () => $mal->getSeason($year, $season, [
+                'alternative_titles',
+                'start_date',
+                'start_season',
+                'genres',
+                'media_type',
+                'num_list_users',
+                'main_picture',
+            ])
+        );
+        // MAL also lists shows still airing from earlier seasons.
+        $seasonalAnime = array_filter(
+            $seasonalAnime,
+            fn (array $anime) => ($anime['start_season']['year'] ?? null) === $year
+                && ($anime['start_season']['season'] ?? null) === $season
+        );
+        $seasonalAnime = collect($seasonalAnime)->unique('id')->values()->all();
+        $seasonalAnime = Arr::sortDesc($seasonalAnime, fn (array $anime) => $anime['num_list_users'] ?? 0);
 
         $spreadsheet = new Spreadsheet;
         $spreadsheet->getDefaultStyle()->getFont()->setName('Arial');
@@ -64,14 +74,12 @@ class GenerateSeasonalCommand extends Command
 
         $linkColor = new Color()->bindParent($spreadsheet)->setHyperlinkTheme();
 
-        /** @var Repository $cache */
-        $cache = Cache::driver('file');
         $httpCacher = app(HttpCacher::class);
 
         $imageWidth = 120;
         $configuration = [
             'Name (Japanese, English)' => [function ($cell, AnimeExtractor $extractor) use ($linkColor, $worksheet) {
-                $id = $extractor->anime->getMalId();
+                $id = $extractor->anime['id'];
                 $worksheet->setCellValue($cell, $extractor->extractTitles());
                 $worksheet->getCell($cell)->getHyperlink()->setUrl("https://myanimelist.net/anime/$id");
                 $worksheet->getCell($cell)->getStyle()->getFont()->setColor($linkColor);
@@ -83,12 +91,12 @@ class GenerateSeasonalCommand extends Command
                     return;
                 }
                 $drawing = new Drawing;
-                $malId = $extractor->anime->getMalId();
+                $malId = $extractor->anime['id'];
 
                 $imagePath = $httpCacher->getLocalPath(
                     $image,
                     "images/$malId.jpg",
-                    Storage::drive('jikan'),
+                    Storage::drive('mal'),
                     CarbonImmutable::now()->subWeek()
                 );
                 $drawing->setPath($imagePath);
@@ -98,6 +106,9 @@ class GenerateSeasonalCommand extends Command
             }, $imageWidth],
             'Start date' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
                 $startDateString = $extractor->extractStartDate();
+                if (! $startDateString) {
+                    return;
+                }
                 $worksheet->setCellValue($cell, Date::convertIsoDate($startDateString));
                 $worksheet->getStyle($cell)->getNumberFormat()->setFormatCode('mmm d');
             }, 80],
@@ -126,7 +137,7 @@ class GenerateSeasonalCommand extends Command
                 $worksheet->getCell($cell)->getStyle()->getAlignment()->setWrapText(true);
             }, 711],
             'MAL ID' => [function ($cell, AnimeExtractor $extractor) use ($worksheet) {
-                $worksheet->setCellValue($cell, $extractor->anime->getMalId());
+                $worksheet->setCellValue($cell, $extractor->anime['id']);
             }],
         ];
 
@@ -145,12 +156,13 @@ class GenerateSeasonalCommand extends Command
 
         $row = 2;
         foreach ($seasonalAnime as $anime) {
-            $malId = $anime->getMalId();
+            $malId = $anime['id'];
             $basicAnimeExtractor = new BasicAnimeExtractor($anime);
             $animeTitle = $basicAnimeExtractor->extractTitlePreferringEnglish();
             $this->line("Anime: {$animeTitle}");
-            if (! in_array($anime->getType(), ['TV', 'OVA', 'ONA'], true)) {
-                $this->warn("Skipping type: {$anime->getType()}");
+            $type = $anime['media_type'] ?? null;
+            if (! in_array($type, ['tv', 'ova', 'ona'], true)) {
+                $this->warn("Skipping type: {$type}");
 
                 continue;
             }
@@ -166,18 +178,17 @@ class GenerateSeasonalCommand extends Command
                 continue;
             }
             try {
-                /** @var AnimeFull $fullAnime */
-                $fullAnime = $cache->remember(
-                    "full-anime-$malId",
+                $animeDetails = $cache->remember(
+                    "mal-anime-details-$malId",
                     now()->addHours(8),
-                    function () use ($jikan, $malId) {
-                        $animeFull = $jikan->getAnimeFullById($malId);
+                    function () use ($mal, $malId) {
+                        $animeDetails = $mal->getAnime($malId, ['synopsis', 'related_anime']);
                         sleep(1); // Throttle.
-                        if (! $animeFull) {
+                        if (! $animeDetails) {
                             throw new \RuntimeException("Anime $malId not found");
                         }
 
-                        return $animeFull->getData();
+                        return $animeDetails;
                     }
                 );
             } catch (\Throwable $e) {
@@ -186,40 +197,34 @@ class GenerateSeasonalCommand extends Command
 
                 continue;
             }
-            $relations = $fullAnime->getRelations() ?? [];
+            $relations = $animeDetails['related_anime'] ?? [];
             $today = now()->startOfDay();
-            foreach ($relations as $relationItem) {
-                $relationType = $relationItem->getRelation();
-                if (! in_array($relationType, ['Prequel', 'Sequel'], true)) {
+            foreach ($relations as $relation) {
+                $relationType = $relation['relation_type_formatted'];
+                if (! in_array($relation['relation_type'], ['prequel', 'sequel'], true)) {
                     continue;
                 }
-                foreach ($relationItem->getEntry() as $entry) {
-                    $relatedMalId = $entry->getMalId();
-                    /** @var Anime|null $relatedAnime */
-                    $relatedAnime = $cache->remember(
-                        "basic-anime-$relatedMalId",
-                        now()->addHours(8),
-                        function () use ($jikan, $relatedMalId) {
-                            $response = $jikan->getAnimeById($relatedMalId);
-                            sleep(1); // Throttle.
+                $relatedMalId = $relation['node']['id'];
+                $relatedAnime = $cache->remember(
+                    "mal-anime-start-date-$relatedMalId",
+                    now()->addHours(8),
+                    function () use ($mal, $relatedMalId) {
+                        $relatedAnime = $mal->getAnime($relatedMalId, ['start_date']);
+                        sleep(1); // Throttle.
 
-                            return $response?->getData();
-                        }
-                    );
-                    if ($relatedAnime === null) {
-                        continue;
+                        // Cache "not found" too, as remember() would not cache null.
+                        return $relatedAnime ?? [];
                     }
-                    $aired = $relatedAnime->getAired();
-                    $from = $aired?->getFrom();
-                    if ($from === null || $from === '') {
-                        continue;
-                    }
-                    $startDate = CarbonImmutable::parse(substr($from, 0, 10));
-                    if ($startDate->lt($today)) {
-                        $this->warn("Skipping due to {$relationType} (MAL ID {$relatedMalId}) that started in the past.");
+                );
+                $from = BasicAnimeExtractor::normalizeDate($relatedAnime['start_date'] ?? null);
+                if ($from === null) {
+                    continue;
+                }
+                $startDate = CarbonImmutable::parse($from);
+                if ($startDate->lt($today)) {
+                    $this->warn("Skipping due to {$relationType} (MAL ID {$relatedMalId}) that started in the past.");
 
-                        continue 3;
-                    }
+                    continue 2;
                 }
             }
             $column = 'A';
@@ -227,7 +232,7 @@ class GenerateSeasonalCommand extends Command
                 $callback = Arr::wrap($callback)[0];
 
                 $worksheet->getRowDimension($row)->setRowHeight(200, 'px');
-                $extractor = new AnimeExtractor($anime, $fullAnime);
+                $extractor = new AnimeExtractor($anime, $animeDetails);
                 $callback("$column$row", $extractor);
 
                 $column++;

@@ -38,9 +38,9 @@ return [
             'report' => false,
         ],
 
-        'jikan' => [
+        'mal' => [
             'driver' => 'local',
-            'root' => storage_path('app/private/jikan'),
+            'root' => storage_path('app/private/mal'),
             'serve' => true,
             'throw' => true,
             'report' => false,

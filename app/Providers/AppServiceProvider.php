@@ -2,11 +2,10 @@
 
 namespace App\Providers;
 
-use App\Extractor\JikanFactory;
+use App\Mal\MalClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\ServiceProvider;
-use Jikan\JikanPHP\Client;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,7 +16,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Date::use(CarbonImmutable::class);
 
-        app()->singleton(Client::class, fn () => JikanFactory::create());
+        app()->singleton(MalClient::class, function () {
+            $clientId = config('services.myanimelist.client_id');
+            if (! $clientId) {
+                throw new \RuntimeException('MYANIMELIST_CLIENT_ID is not set.');
+            }
+
+            return new MalClient($clientId);
+        });
     }
 
     /**

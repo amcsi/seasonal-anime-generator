@@ -4,32 +4,19 @@ declare(strict_types=1);
 
 namespace App\Extractor;
 
-use Illuminate\Support\Arr;
-use Jikan\JikanPHP\Model\Anime;
-use Jikan\JikanPHP\Model\MalUrl;
-
 class BasicAnimeExtractor
 {
-    public function __construct(public Anime $anime) {}
+    /**
+     * @param  array<string, mixed>  $anime  MAL API anime node
+     */
+    public function __construct(public array $anime) {}
 
     public function extractTitlesAsArray(): array
     {
-        $titles = $this->anime->getTitles();
-
-        $titlesToReturn = [
-            0 => null, // Original
-            1 => null, // English
+        return [
+            0 => $this->anime['title'] ?? null, // Original
+            1 => ($this->anime['alternative_titles']['en'] ?? null) ?: null, // English
         ];
-
-        foreach ($titles as $title) {
-            if ($title->getType() === 'Default') {
-                $titlesToReturn[0] = $title->getTitle();
-            } elseif ($title->getType() === 'English') {
-                $titlesToReturn[1] = $title->getTitle();
-            }
-        }
-
-        return $titlesToReturn;
     }
 
     public function extractTitlePreferringEnglish()
@@ -41,29 +28,30 @@ class BasicAnimeExtractor
 
     public function extractImage(): ?string
     {
-        return $this->anime->getImages()->getJpg()->getImageUrl();
+        $url = $this->anime['main_picture']['medium'] ?? null;
+
+        // A few pictures are WebP, which PhpSpreadsheet can't embed; the CDN serves the same image as JPEG.
+        return $url ? preg_replace('/\.webp$/', '.jpg', $url) : null;
     }
 
     public function extractGenres(): array
     {
-        return Arr::map($this->anime->getGenres(), fn (MalUrl $genre) => $genre->getName());
+        return array_column($this->anime['genres'] ?? [], 'name');
     }
 
     public function extractTitles(): string
     {
-        return trim(implode("\n", array_unique($this->extractTitlesAsArray())));
+        return trim(implode("\n", array_unique(array_filter($this->extractTitlesAsArray()))));
     }
 
-    public function extractStartDate(): string
+    public function extractStartDate(): ?string
     {
-        $aired = $this->anime->getAired();
-
-        return substr($aired->getFrom(), 0, 10);
+        return self::normalizeDate($this->anime['start_date'] ?? null);
     }
 
     public function extractPopularity(): ?int
     {
-        return $this->anime->getMembers();
+        return $this->anime['num_list_users'] ?? null;
     }
 
     public function extractTrailer(): ?string
@@ -71,5 +59,21 @@ class BasicAnimeExtractor
         $titleString = $this->extractTitlePreferringEnglish();
 
         return $titleString ? 'https://www.youtube.com/results?search_query='.urlencode($titleString) : '';
+    }
+
+    /**
+     * MAL dates may be partial ("2026" or "2026-12"); pad them to a full Y-m-d date.
+     */
+    public static function normalizeDate(?string $date): ?string
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        return match (strlen($date)) {
+            4 => "$date-01-01",
+            7 => "$date-01",
+            default => $date,
+        };
     }
 }

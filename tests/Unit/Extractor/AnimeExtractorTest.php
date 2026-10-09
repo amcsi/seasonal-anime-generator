@@ -5,30 +5,19 @@ declare(strict_types=1);
 namespace Tests\Unit\Extractor;
 
 use App\Extractor\AnimeExtractor;
-use Jikan\JikanPHP\Model\Anime;
-use Jikan\JikanPHP\Model\AnimeFull;
-use Jikan\JikanPHP\Model\AnimeImages;
-use Jikan\JikanPHP\Model\AnimeImagesJpg;
-use Jikan\JikanPHP\Model\Daterange;
-use Jikan\JikanPHP\Model\MalUrl;
-use Jikan\JikanPHP\Model\Title;
+use App\Extractor\BasicAnimeExtractor;
 use Tests\TestCase;
 
 class AnimeExtractorTest extends TestCase
 {
     public function test_extract_titles(): void
     {
-        $anime = new Anime;
-        $japaneseTitle = new Title;
-        $japaneseTitle->setTitle('Kaoru Hana wa Rin to Saku');
-        $japaneseTitle->setType('Default');
-        $englishTitle = new Title;
-        $englishTitle->setTitle('The Fragrant Flower Blooms with Dignity');
-        $englishTitle->setType('English');
+        $anime = [
+            'title' => 'Kaoru Hana wa Rin to Saku',
+            'alternative_titles' => ['en' => 'The Fragrant Flower Blooms with Dignity'],
+        ];
 
-        $anime->setTitles([$japaneseTitle, $englishTitle]);
-
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        $instance = new AnimeExtractor($anime, []);
 
         self::assertSame(
             "Kaoru Hana wa Rin to Saku\nThe Fragrant Flower Blooms with Dignity",
@@ -38,17 +27,12 @@ class AnimeExtractorTest extends TestCase
 
     public function test_extract_titles_same_in_both_languages(): void
     {
-        $anime = new Anime;
-        $japaneseTitle = new Title;
-        $japaneseTitle->setTitle('Sanda');
-        $japaneseTitle->setType('Default');
-        $englishTitle = new Title;
-        $englishTitle->setTitle('Sanda');
-        $englishTitle->setType('English');
+        $anime = [
+            'title' => 'Sanda',
+            'alternative_titles' => ['en' => 'Sanda'],
+        ];
 
-        $anime->setTitles([$japaneseTitle, $englishTitle]);
-
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        $instance = new AnimeExtractor($anime, []);
 
         self::assertSame(
             'Sanda',
@@ -56,91 +40,113 @@ class AnimeExtractorTest extends TestCase
         );
     }
 
+    public function test_extract_titles_empty_english(): void
+    {
+        $anime = [
+            'title' => 'Liar Game',
+            'alternative_titles' => ['en' => ''],
+        ];
+
+        $instance = new AnimeExtractor($anime, []);
+
+        self::assertSame('Liar Game', $instance->extractTitles());
+    }
+
     public function test_extract_start_date(): void
     {
-        $anime = new Anime;
-        $dateRange = new Daterange;
-        $from = '2025-10-12T00:00:00+00:00';
-        $dateRange->setFrom($from);
-        $anime->setAired($dateRange);
-
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        $instance = new AnimeExtractor(['start_date' => '2025-10-12'], []);
 
         self::assertSame('2025-10-12', $instance->extractStartDate());
+    }
+
+    public function test_extract_start_date_partial(): void
+    {
+        self::assertSame('2026-12-01', new AnimeExtractor(['start_date' => '2026-12'], [])->extractStartDate());
+        self::assertSame('2026-01-01', new AnimeExtractor(['start_date' => '2026'], [])->extractStartDate());
+        self::assertNull(new AnimeExtractor([], [])->extractStartDate());
+    }
+
+    public function test_normalize_date(): void
+    {
+        self::assertSame('2026-12-01', BasicAnimeExtractor::normalizeDate('2026-12'));
+        self::assertNull(BasicAnimeExtractor::normalizeDate(''));
+        self::assertNull(BasicAnimeExtractor::normalizeDate(null));
     }
 
     public function test_extract_image(): void
     {
         $imageUrl = 'https://cdn.myanimelist.net/images/anime/1168/148347.jpg';
 
-        $anime = new Anime;
-        $images = new AnimeImages;
-        $jpg = new AnimeImagesJpg;
-        $jpg->setImageUrl($imageUrl);
-        $images->setJpg($jpg);
-        $anime->setImages($images);
-
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        $instance = new AnimeExtractor([
+            'main_picture' => [
+                'medium' => $imageUrl,
+                'large' => 'https://cdn.myanimelist.net/images/anime/1168/148347l.jpg',
+            ],
+        ], []);
 
         self::assertSame($imageUrl, $instance->extractImage());
     }
 
+    public function test_extract_image_webp_as_jpg(): void
+    {
+        $instance = new AnimeExtractor([
+            'main_picture' => ['medium' => 'https://cdn.myanimelist.net/images/anime/1244/138851.webp'],
+        ], []);
+
+        self::assertSame('https://cdn.myanimelist.net/images/anime/1244/138851.jpg', $instance->extractImage());
+    }
+
+    public function test_extract_image_missing(): void
+    {
+        self::assertNull(new AnimeExtractor([], [])->extractImage());
+    }
+
     public function test_extract_genres(): void
     {
-        $anime = new Anime;
-        $genresArray = ['Horror', 'Mystery', 'Supernatural'];
-        $genres = [];
-        foreach ($genresArray as $item) {
-            $genre = new MalUrl;
-            $genre->setName($item);
-            $genres[] = $genre;
-        }
-        $anime->setGenres($genres);
+        $instance = new AnimeExtractor([
+            'genres' => [
+                ['id' => 14, 'name' => 'Horror'],
+                ['id' => 7, 'name' => 'Mystery'],
+                ['id' => 37, 'name' => 'Supernatural'],
+            ],
+        ], []);
 
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        self::assertSame(['Horror', 'Mystery', 'Supernatural'], $instance->extractGenres());
+    }
 
-        self::assertSame($genresArray, $instance->extractGenres());
+    public function test_extract_popularity(): void
+    {
+        self::assertSame(189583, new AnimeExtractor(['num_list_users' => 189583], [])->extractPopularity());
     }
 
     public function test_extract_trailer(): void
     {
-        $anime = new Anime;
-        $englishTitle = new Title;
-        $englishTitle->setTitle('The Fragrant Flower Blooms with Dignity');
-        $englishTitle->setType('English');
-        $anime->setTitles([$englishTitle]);
-
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        $instance = new AnimeExtractor([
+            'title' => 'Kaoru Hana wa Rin to Saku',
+            'alternative_titles' => ['en' => 'The Fragrant Flower Blooms with Dignity'],
+        ], []);
 
         self::assertSame(
-            'https://www.youtube.com/results?search_query='.urlencode($englishTitle->getTitle()),
+            'https://www.youtube.com/results?search_query='.urlencode('The Fragrant Flower Blooms with Dignity'),
             $instance->extractTrailer()
         );
     }
 
     public function test_extract_trailer_no_english(): void
     {
-        $anime = new Anime;
-        $japaneseTitle = new Title;
-        $japaneseTitle->setTitle('Liar Game');
-        $japaneseTitle->setType('Default');
-        $anime->setTitles([$japaneseTitle]);
-
-        $instance = new AnimeExtractor($anime, new AnimeFull);
+        $instance = new AnimeExtractor(['title' => 'Liar Game', 'alternative_titles' => ['en' => '']], []);
 
         self::assertSame(
-            'https://www.youtube.com/results?search_query='.urlencode($japaneseTitle->getTitle()),
+            'https://www.youtube.com/results?search_query='.urlencode('Liar Game'),
             $instance->extractTrailer()
         );
     }
 
     public function test_extract_synopsis(): void
     {
-        $anime = new AnimeFull;
         $synopsis = "hey\n\nyo\n\n[Written by MAL Rewrite]\n\n(Source: Alpha Manga)";
-        $anime->setSynopsis($synopsis);
 
-        $instance = new AnimeExtractor(new Anime, $anime);
+        $instance = new AnimeExtractor([], ['synopsis' => $synopsis]);
 
         self::assertSame("hey\nyo", $instance->extractSynopsis());
     }
