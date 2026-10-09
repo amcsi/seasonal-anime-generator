@@ -30,7 +30,7 @@ class GenerateSeasonalCommand extends Command
     {
         $jikan = app(Client::class);
         $now = now();
-        $seasonStart = $now->addQuarter()->floorQuarters();
+        $seasonStart = $now->subMonth()->addQuarter()->floorQuarters();
         $year = $seasonStart->year;
         $season = match ($seasonStart->quarter) {
             1 => 'winter',
