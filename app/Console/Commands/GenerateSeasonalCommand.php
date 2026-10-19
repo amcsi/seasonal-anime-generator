@@ -6,6 +6,7 @@ use App\Extractor\AnimeExtractor;
 use App\Extractor\BasicAnimeExtractor;
 use App\Http\Cache\HttpCacher;
 use App\Mal\MalClient;
+use App\Spreadsheet\ScheduleSheetBuilder;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\Repository;
@@ -240,6 +241,9 @@ class GenerateSeasonalCommand extends Command
             $this->info('Success');
             $row++;
         }
+
+        new ScheduleSheetBuilder($worksheet->getTitle())->build($spreadsheet);
+        $spreadsheet->setActiveSheetIndex(0);
 
         $writer = new Xlsx($spreadsheet);
         $writer->save(storage_path('app/private/'.$filename));
